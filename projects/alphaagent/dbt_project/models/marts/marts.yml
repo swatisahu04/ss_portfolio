@@ -1,0 +1,73 @@
+version: 2
+
+models:
+  - name: dim_portfolios
+    description: |
+      Portfolio dimension table. One row per portfolio. Includes strategy, manager,
+      base currency, inception, and current NAV.
+      **Business owner**: PM Ops. **Grain**: portfolio_id (unique).
+    columns:
+      - name: portfolio_id
+        description: Unique portfolio identifier (P-NNN).
+        tests: [unique, not_null]
+      - name: strategy
+        description: One of Growth, Value, Balanced, ESG, Income.
+        tests:
+          - accepted_values:
+              values: ["Growth", "Value", "Balanced", "ESG", "Income"]
+      - name: current_nav_usd
+        description: Latest day's net asset value in USD.
+
+  - name: fct_portfolio_performance_daily
+    description: |
+      Daily portfolio performance fact. One row per (portfolio, as_of_date).
+      Includes daily return, MTD/YTD compounded returns, and YTD excess return vs SPY and AGG.
+      **Use for**: performance reporting, PM dashboards, NLQ like "what's P-001's YTD return".
+    columns:
+      - name: portfolio_id
+        tests: [not_null]
+      - name: as_of_date
+        tests: [not_null]
+      - name: daily_return
+        description: Value-weighted return for that day. Null on inception day.
+      - name: mtd_return
+        description: Compounded month-to-date return.
+      - name: ytd_return
+        description: Compounded year-to-date return.
+      - name: spy_excess_return_ytd
+        description: YTD return minus SPY YTD return.
+      - name: agg_excess_return_ytd
+        description: YTD return minus AGG YTD return.
+    tests:
+      - dbt_utils.unique_combination_of_columns:
+          combination_of_columns: [portfolio_id, as_of_date]
+
+  - name: fct_portfolio_risk_daily
+    description: |
+      Rolling 30-day risk metrics. Grain: (portfolio, as_of_date).
+      **Use for**: risk dashboards, NLQ like "which portfolios have Sharpe > 1".
+    columns:
+      - name: vol_30d
+        description: Annualized volatility from 30-day stddev.
+      - name: sharpe_30d
+        description: Annualized Sharpe ratio (RF=0).
+      - name: beta_vs_spy_30d
+        description: Beta of portfolio returns vs SPY, rolling 30d.
+    tests:
+      - dbt_utils.unique_combination_of_columns:
+          combination_of_columns: [portfolio_id, as_of_date]
+
+  - name: fct_position_attribution
+    description: |
+      Position-level contribution to portfolio return.
+      Grain: (portfolio, security, date).
+      **Use for**: attribution analysis, sector/stock contribution.
+
+  - name: fct_trade_activity_daily
+    description: |
+      Daily trade activity per portfolio — counts, notionals, one-sided turnover.
+      Grain: (portfolio, trade_date).
+      **Use for**: turnover analysis, trading cost reports.
+    columns:
+      - name: turnover_ratio
+        description: "min(buys, sells) / NAV — standard one-sided turnover."

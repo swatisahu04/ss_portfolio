@@ -1,0 +1,14 @@
+alphaagent:
+  target: dev
+  outputs:
+    dev:
+      type: postgres
+      host: "{{ env_var('PG_HOST', 'localhost') }}"
+      port: "{{ env_var('PG_PORT', '5432') | as_number }}"
+      user: "{{ env_var('PG_USER', 'alphaagent') }}"
+      password: "{{ env_var('PG_PASSWORD', 'alphaagent') }}"
+      dbname: "{{ env_var('PG_DB', 'alphaagent') }}"
+      schema: analytics
+      threads: 4
+      keepalives_idle: 0
+      sslmode: prefer
