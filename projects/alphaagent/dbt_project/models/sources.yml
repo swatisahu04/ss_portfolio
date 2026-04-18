@@ -1,0 +1,76 @@
+version: 2
+
+sources:
+  - name: raw
+    description: Landing zone for all ingested data — batch-loaded Parquet + streaming Kafka.
+    database: alphaagent
+    schema: raw
+    loaded_at_field: ingested_at
+    tables:
+      - name: securities
+        description: Master list of tradeable securities including benchmarks.
+        columns:
+          - name: security_id
+            description: Unique security identifier (SEC-nnnnn or BMK-ticker).
+            tests: [not_null, unique]
+          - name: ticker
+            tests: [not_null]
+          - name: asset_type
+            tests:
+              - accepted_values:
+                  values: ["equity", "etf", "bond"]
+
+      - name: prices_daily
+        description: End-of-day close prices by security. ~500 rows/day.
+        freshness:
+          warn_after: {count: 48, period: hour}
+          error_after: {count: 72, period: hour}
+        loaded_at_field: NULL
+        columns:
+          - name: security_id
+            tests:
+              - not_null
+              - relationships:
+                  to: source('raw', 'securities')
+                  field: security_id
+          - name: price_date
+            tests: [not_null]
+          - name: close
+            tests: [not_null]
+
+      - name: portfolios
+        description: Registered portfolios and their strategies.
+        columns:
+          - name: portfolio_id
+            tests: [not_null, unique]
+          - name: strategy
+            tests:
+              - accepted_values:
+                  values: ["Growth", "Value", "Balanced", "ESG", "Income"]
+
+      - name: positions_daily
+        description: End-of-day position snapshots.
+        columns:
+          - name: portfolio_id
+            tests: [not_null]
+          - name: security_id
+            tests: [not_null]
+          - name: position_date
+            tests: [not_null]
+
+      - name: trades
+        description: Historical batch-loaded trades (non-unique by design to test idempotency).
+
+      - name: trades_stream
+        description: Deduped streaming trades (Kafka consumer keeps one per trade_id).
+        columns:
+          - name: trade_id
+            tests: [not_null, unique]
+
+      - name: benchmarks_daily
+        description: Daily benchmark close prices (SPY, AGG, VT).
+        columns:
+          - name: benchmark_id
+            tests: [not_null]
+          - name: price_date
+            tests: [not_null]

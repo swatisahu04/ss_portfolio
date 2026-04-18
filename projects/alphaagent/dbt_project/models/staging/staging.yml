@@ -1,0 +1,24 @@
+version: 2
+
+models:
+  - name: stg_securities
+    description: Cleaned security master with is_benchmark flag.
+    columns:
+      - name: security_id
+        tests: [unique, not_null]
+  - name: stg_prices_daily
+    description: Prices with lag-derived daily returns.
+    columns:
+      - name: daily_return
+        description: (close / prev_close) - 1. Null on first day.
+  - name: stg_portfolios
+    columns:
+      - name: portfolio_id
+        tests: [unique, not_null]
+  - name: stg_positions_daily
+  - name: stg_trades
+    description: Deduped union of batch + stream trades.
+    columns:
+      - name: trade_id
+        tests: [not_null]
+  - name: stg_benchmarks_daily
